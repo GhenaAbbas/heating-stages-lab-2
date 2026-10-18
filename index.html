@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Heating Stages Lab 2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Left (pinned): the sample in a cylinder on a heater, with thermometer and joulemeter.
+   Right: the student's heating model (Add stage, heating / phase change), then the data tables.
+   No graph on purpose: students draw the heating curve themselves. Light mode only. */
+:root {
+  --bg: #f5f6f8; --surface: #ffffff; --fg: #1b2733; --muted: #5d6b78; --line: #d9dee4;
+  --accent: #6b2fa0;          /* the deck's purple */
+  --heat: #d64545; --ok: #1f8a4c; --warn: #b5541c; --glass: #8a96a2;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.45; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 16px 28px; display: grid; gap: 12px; }
+h1 { font-size: 1.55rem; margin: 0; color: var(--accent); }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; display: grid; gap: 8px; min-width: 0; align-content: start; }
+.box h2 { margin: 0; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+button, select { font: inherit; cursor: pointer; }
+button:disabled, select:disabled { cursor: not-allowed; opacity: 0.45; }
+.pick { border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 999px; padding: 6px 14px; font-size: 0.98rem; }
+.pick[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--surface); font-weight: 700; }
+.task { border: 2px solid var(--accent); border-radius: 10px; padding: 8px 14px; font-size: 1.1rem; font-weight: 700; margin: 0; }
+.lab { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 12px; align-items: start; }
+.side { display: grid; gap: 12px; min-width: 0; }
+.pinned { position: sticky; top: 8px; }
+@media (max-width: 900px) { .lab { grid-template-columns: minmax(0, 1fr); } .pinned { position: static; } }
+.box svg { display: block; width: 100%; height: auto; }
+#bench { max-height: 330px; }
+.model { margin: 0; font-size: 0.82rem; color: var(--muted); }
+.act { border: 0; border-radius: 10px; padding: 8px 16px; font-size: 1rem; font-weight: 700; color: #fff; background: var(--heat); }
+.act.purple { background: var(--accent); }
+.ghost { border: 1.5px solid var(--line); background: transparent; color: var(--fg); border-radius: 10px; padding: 6px 11px; }
+.step { font-family: var(--font-num); font-size: 0.9rem; }
+.seg { border: 1.5px solid var(--accent); border-radius: 8px; padding: 5px 11px; font-family: var(--font-num); font-size: 1rem; font-weight: 700; color: var(--accent); }
+.note { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.res { margin: 0; font-weight: 700; }
+.res:empty { display: none; }
+.res.ok { color: var(--ok); } .res.bad { color: var(--warn); }
+input[type=text] { font-family: var(--font-num); font-size: 1rem; width: 6.2rem; padding: 4px 7px; border: 2px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); }
+input.q { width: 8.5rem; }
+input[type=text]:focus, select:focus { border-color: var(--accent); outline: none; }
+select { border: 2px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); padding: 4px 6px; font-weight: 700; }
+.stage { border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 6px; }
+.stage.ok { border-color: var(--ok); } .stage.bad { border-color: var(--warn); } .stage.cur { border-color: var(--accent); }
+.stage .top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stage .num { font-family: var(--font-num); font-weight: 700; color: var(--accent); }
+.stage .x { margin-left: auto; border: 0; background: transparent; color: var(--muted); font-size: 1.1rem; padding: 0 4px; }
+.inrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.stage .res { font-size: 0.95rem; }
+#stages { display: grid; gap: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 400; font-size: 0.8rem; }
+td.num, th.num { text-align: right; }
+td.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.hl td { background: #f1eaf8; }
+.tablewrap { overflow-x: auto; }
+.empty { color: var(--muted); font-size: 0.9rem; margin: 0; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Heating Stages Lab 2</h1>
+
+  <section class="box" aria-labelledby="h-level">
+    <h2 id="h-level">Your level</h2>
+    <div class="btns" id="levels"></div>
+    <p class="task" id="task"></p>
+  </section>
+
+  <div class="lab">
+    <div class="side pinned">
+      <section class="box" aria-labelledby="h-bench">
+        <h2 id="h-bench">Experiment</h2>
+        <svg id="bench" viewBox="0 0 470 300" role="img" aria-label="The sample in a cylinder on a heater, with a thermometer and a joulemeter"></svg>
+      </section>
+    </div>
+
+    <div class="side">
+      <!-- Emerging, Developing, Proficient: build and test a heating model -->
+      <section class="box" id="p-build" aria-labelledby="h-build">
+        <h2 id="h-build">My heating model</h2>
+        <p class="note" id="b-note">Add one stage for each part of the heating. Choose <b>Heating</b> (the temperature rises) or <b>Phase change</b> (the phase changes at one temperature), then type the heat for that stage in J.</p>
+        <div id="stages"></div>
+        <div class="btns">
+          <button class="ghost" id="b-add">+ Add stage</button>
+          <button class="act" id="b-test">Test my model</button>
+          <button class="ghost" id="b-reset">New sample</button>
+        </div>
+        <p class="res" id="b-msg" aria-live="polite"></p>
+      </section>
+
+      <!-- Exceeding: steam mixed with ice. Students watch it happen (Start), but no temperatures or masses are shown:
+           they calculate the final temperature and the mass of ice left, and Check says only "matches" or "doesn't match". -->
+      <section class="box" id="x-setup" aria-labelledby="h-xsetup" hidden>
+        <h2 id="h-xsetup">Run the mixing</h2>
+        <p class="note">0.07 kg of steam at 115 °C is let into an insulated container holding 0.85 kg of ice at −14 °C.</p>
+        <div class="btns">
+          <button class="act" id="x-go">▶ Start</button>
+          <button class="ghost" id="x-reset">Reset</button>
+        </div>
+        <p class="res" id="x-msg" aria-live="polite"></p>
+        <h2>Your answer</h2>
+        <div class="inrow"><label for="x-T"><b>Final temperature</b></label>
+          <input type="text" id="x-T" inputmode="decimal" autocomplete="off"> °C</div>
+        <div class="inrow"><label for="x-m"><b>Mass of ice left</b></label>
+          <input type="text" id="x-m" inputmode="decimal" autocomplete="off"> kg
+          <button class="act purple" id="x-check">Check</button></div>
+        <p class="res" id="x-res" aria-live="polite"></p>
+      </section>
+
+      <section class="box" aria-labelledby="h-t1">
+        <h2 id="h-t1">Table 1: Melting and boiling points and latent heats</h2>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Substance</th><th class="num">Melting point (°C)</th><th class="num">L<sub>f</sub> (J/kg)</th><th class="num">Boiling point (°C)</th><th class="num">L<sub>v</sub> (J/kg)</th></tr></thead>
+          <tbody id="t1"></tbody>
+        </table></div>
+      </section>
+      <section class="box" aria-labelledby="h-t2">
+        <h2 id="h-t2">Table 2: Specific heat capacities, c (J/(kg·°C))</h2>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Substance</th><th class="num">Solid</th><th class="num">Liquid</th><th class="num">Gas</th></tr></thead>
+          <tbody id="t2"></tbody>
+        </table></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- data (Obelas Table 11.4; c of liquid copper and of mercury: NIST-JANAF, Cp/M)
+const SUBS = {
+  copper:  { name: "copper",  mp: 1083, bp: 2560, Lf: 134000, Lv: 5060000, c: [380, 517, null], col: ["#c06a2b", "#f0a35e", "#f6d2b0"] },
+  water:   { name: "water",   mp: 0,    bp: 100,  Lf: 333000, Lv: 2260000, c: [2100, 4180, 2000], col: ["#cfe8fa", "#7fb9ea", "#b9c7d4"] },
+  mercury: { name: "mercury", mp: -39,  bp: 357,  Lf: 11400,  Lv: 296000,  c: [135, 140, 104],   col: ["#9aa3ab", "#c3cad1", "#e3e7ea"] },
+};
+const PHASES = ["solid", "liquid", "gas"];
+const PNAME = { copper: ["solid copper", "liquid copper", "copper vapour"], water: ["ice", "water", "steam"], mercury: ["solid mercury", "liquid mercury", "mercury vapour"] };
+const LEVELS = {
+  E: { name: "Emerging",   mode: "build", sub: "copper",  m: 0.35, T0: 24, fixed: true,
+       note: "The stages and their formulas are set up for you. Type the heat for each stage in J, then test your model.",
+       preset: () => [{ type: "heat", a: "24", b: "1083", q: "", lockType: true, lockTemps: true, hint: "Q = mcΔT" },
+                      { type: "phase", T: "1083", q: "", lockType: true, lockTemps: true, hint: "Q = mL<sub>f</sub>" }],   Tcap: 1300, target: { ph: 1, T: 1083 },
+       task: "Construct a heating model to melt 0.35 kg of copper completely, starting at 24 °C. Draw the heating curve and highlight the melting point." },
+  D: { name: "Developing", mode: "build", sub: "water",   m: 0.38, T0: -18, fixed: true,
+       note: "The four stage types are set up for you. For each stage, type its temperatures and the heat in J, then test your model.",
+       preset: () => [{ type: "heat", lockType: true }, { type: "phase", lockType: true }, { type: "heat", lockType: true }, { type: "phase", lockType: true }]
+                      .map(s => Object.assign({ a: "", b: "", T: "", q: "" }, s)),  Tcap: 150,  target: { ph: 2, T: 100 },
+       task: "Construct a heating model to turn 0.38 kg of ice at −18 °C completely into steam. Draw the heating curve and highlight the melting and boiling points." },
+  P: { name: "Proficient", mode: "build", sub: "mercury", m: 0.37, T0: -150, Tcap: 450,  target: { ph: 2, T: 382 },
+       task: "Construct a heating model for 0.37 kg of mercury from −150 °C to 382 °C. Draw the heating curve and highlight the melting and boiling points." },
+  X: { name: "Exceeding",  mode: "mix", sub: "water",
+       task: "Press Start: 0.07 kg of steam at 115 °C is let into an insulated container with 0.85 kg of ice at −14 °C. Find the final temperature and the mass of ice left." },
+};
+const TOL = 0.005;                                       // a stage's heat within 0.5 % counts as correct
+
+const $ = id => document.getElementById(id);
+const fmt = n => Math.abs(n) >= 1e6 ? (n / 1e6).toFixed(2).replace(/\.?0+$/, "") + " × 10⁶" : Math.round(n).toLocaleString("en-US");
+// house style: ordinary numbers below a million, scientific notation from a million; no ".0" on whole numbers
+const fmtT = t => { const r = Math.round(t * 10) / 10; return (r < 0 ? "−" : "") + String(Math.abs(r)); };
+const fmtDeg = t => (t < 0 ? "−" : "") + Math.abs(t);
+const parseNum = v => {                                  // accepts 1130000, 1,130,000, 1.13e6, 1.13 × 10^6, 1.13x10⁶
+  let raw = String(v).replace(/[,\s]/g, "").replace(/[−–]/g, "-").replace(/(j|°c|c)$/i, "").replace(/⁶/g, "^6").replace(/⁵/g, "^5").replace(/⁴/g, "^4");
+  raw = raw.replace(/[×x*]10\^?(-?\d+)$/i, "e$1");
+  return raw === "" ? NaN : Number(raw);
+};
+
+// ---------- physics: the real sample, heated along its chain of stages
+function phaseAt(sub, T) { return T < sub.mp ? 0 : T < sub.bp ? 1 : 2; }
+function chainFor(sub, m, T0, Tcap) {
+  const ch = []; let T = T0, ph = phaseAt(sub, T0);
+  while (true) {
+    const top = ph === 0 ? sub.mp : ph === 1 ? sub.bp : Tcap;
+    const end = Math.min(top, Tcap);
+    if (end > T) { ch.push({ kind: "warm", ph, T0: T, T1: end, Q: m * sub.c[ph] * (end - T) }); T = end; }
+    if (T >= Tcap || ph === 2) break;
+    ch.push({ kind: "change", from: ph, T, Q: m * (ph === 0 ? sub.Lf : sub.Lv) }); ph++;
+  }
+  return ch;
+}
+function stateAt(ch, q) {
+  const comp = [0, 0, 0]; comp[ch[0].kind === "warm" ? ch[0].ph : ch[0].from] = 1;
+  let T = ch[0].kind === "warm" ? ch[0].T0 : ch[0].T, rem = q;
+  for (const st of ch) {
+    const f = st.Q > 0 ? Math.min(1, Math.max(0, rem / st.Q)) : 1;
+    if (st.kind === "warm") T = st.T0 + (st.T1 - st.T0) * f;
+    else { T = st.T; comp[st.from] -= f; comp[st.from + 1] += f; }
+    rem -= st.Q;
+    if (rem <= 1e-6) break;
+  }
+  return { T, comp: comp.map(x => (x < 1e-9 ? 0 : x)) };
+}
+const total = ch => ch.reduce((a, s) => a + s.Q, 0);
+function heatToState(ch, ph, T) {                        // heat from the start until the sample is all phase ph at T
+  let q = 0;
+  for (const st of ch) {
+    if (st.kind === "warm" && st.ph === ph && T >= st.T0 && T <= st.T1) return q + st.Q * (T - st.T0) / (st.T1 - st.T0);
+    q += st.Q;
+    if (st.kind === "change" && st.from + 1 === ph && st.T === T) return q;
+  }
+  return NaN;
+}
+function describe(sub, z) {
+  const names = PNAME[sub.name].filter((_, i) => z.comp[i] > 0);
+  return (names.length > 1 ? names.join(" and ") : "all " + names[0]) + " at " + fmtT(z.T) + " °C";
+}
+
+// ---------- state
+let level = "P";
+let B = { stages: [], results: [], shown: 0, running: false, done: false, msg: "", msgCls: "" };
+let X = { h: 0, running: false, mixed: false, matched: false, ok: false, res: "" };
+let raf = null;
+const L = () => LEVELS[level];
+const S = () => SUBS[L().sub];
+function chainNow() { const l = L(); return chainFor(S(), l.m, l.T0, l.Tcap); }
+
+// ---------- model builder
+function newStage() { return { type: "heat", a: "", b: "", T: "", q: "" }; }
+function freshStages() { const l = L(); return l.preset ? l.preset() : [newStage()]; }   // scaffolded levels start from their set-up stages
+const DEFAULT_NOTE = document.getElementById("b-note") ? document.getElementById("b-note").innerHTML : "";
+function buildStages() {
+  $("stages").innerHTML = B.stages.map((s, i) => `
+    <div class="stage" id="sg-${i}">
+      <div class="top"><span class="num">Stage ${i + 1}</span>
+        <select id="sg-type-${i}" aria-label="Stage ${i + 1} type"${s.lockType ? ' data-lock="1"' : ""}>
+          <option value="heat"${s.type === "heat" ? " selected" : ""}>Heating</option>
+          <option value="phase"${s.type === "phase" ? " selected" : ""}>Phase change</option>
+        </select>
+        ${L().fixed ? "" : `<button class="x" id="sg-del-${i}" aria-label="Delete stage ${i + 1}">✕</button>`}</div>
+      <div class="inrow">${s.type === "heat"
+        ? `from <input type="text" id="sg-a-${i}" inputmode="decimal" value="${s.a}" aria-label="Stage ${i + 1} start temperature"${s.lockTemps ? ' data-lock="1"' : ""}> °C to <input type="text" id="sg-b-${i}" inputmode="decimal" value="${s.b}" aria-label="Stage ${i + 1} end temperature"${s.lockTemps ? ' data-lock="1"' : ""}> °C`
+        : `at <input type="text" id="sg-T-${i}" inputmode="decimal" value="${s.T}" aria-label="Stage ${i + 1} temperature"${s.lockTemps ? ' data-lock="1"' : ""}> °C`}</div>
+      ${s.hint ? `<div class="note">Formula: <i>${s.hint}</i></div>` : ""}
+      <div class="inrow">heat <input type="text" class="q" id="sg-q-${i}" inputmode="decimal" value="${s.q}" aria-label="Stage ${i + 1} heat in J"> J</div>
+      <p class="res" id="sg-res-${i}"></p>
+    </div>`).join("");
+  B.stages.forEach((s, i) => {
+    $(`sg-type-${i}`).onchange = e => { s.type = e.target.value; clearTest(); buildStages(); render(); };
+    if ($(`sg-del-${i}`)) $(`sg-del-${i}`).onclick = () => { B.stages.splice(i, 1); clearTest(); buildStages(); render(); };
+    ["a", "b", "T", "q"].forEach(k => { const el = $(`sg-${k}-${i}`); if (el) el.oninput = e => { s[k] = e.target.value; clearTest(); render(); }; });
+  });
+}
+function clearTest() { if (B.running) return; B.results = []; B.shown = 0; B.done = false; B.msg = ""; }
+$("b-add").onclick = () => { B.stages.push(newStage()); clearTest(); buildStages(); render(); };
+$("b-reset").onclick = () => { stop(); B.results = []; B.shown = 0; B.done = false; B.msg = ""; render(); };
+
+// Check one stage of the student's model against the real sample. Returns {ok, text, add, end}.
+function checkStage(i, s, prev, ch, sub, m) {
+  const name = sub.name, q = parseNum(s.q);
+  if (s.type === "heat") {
+    const a = parseNum(s.a), b = parseNum(s.b);
+    if (!isFinite(a) || !isFinite(b)) return { ok: false, text: "Type the start and end temperatures." };
+    if (Math.abs(a - prev.T) > 0.05) return { ok: false, text: `This stage should start at ${fmtDeg(prev.T)} °C, where the ${i ? "last stage ended" : "sample starts"}.` };
+    if (b <= a) return { ok: false, text: "In a heating stage the temperature must rise." };
+    if (prev.ph === 0 && a >= sub.mp) return { ok: false, text: `At ${fmtDeg(a)} °C the ${name} is still solid: it must melt before its temperature can rise.` };
+    if (prev.ph === 1 && a >= sub.bp) return { ok: false, text: `At ${fmtDeg(a)} °C the ${name} is still liquid: it must boil before its temperature can rise.` };
+    if (prev.ph === 0 && b > sub.mp) return { ok: false, text: `Between ${fmtDeg(a)} °C and ${fmtDeg(b)} °C the ${name} melts at ${fmtDeg(sub.mp)} °C: that needs its own phase-change stage.` };
+    if (prev.ph === 1 && b > sub.bp) return { ok: false, text: `Between ${fmtDeg(a)} °C and ${fmtDeg(b)} °C the ${name} boils at ${fmtDeg(sub.bp)} °C: that needs its own phase-change stage.` };
+    if (!isFinite(q) || q <= 0) return { ok: false, text: "Type the heat for this stage in J." };
+    const trueQ = m * sub.c[prev.ph] * (b - a);
+    return judge(q, trueQ, { ph: prev.ph, T: b }, ch, sub, prev);
+  }
+  const T = parseNum(s.T);
+  if (!isFinite(T)) return { ok: false, text: "Type the temperature of the phase change." };
+  if (T !== sub.mp && T !== sub.bp) return { ok: false, text: `The ${name} does not change phase at ${fmtDeg(T)} °C.` };
+  if (Math.abs(T - prev.T) > 0.05) return { ok: false, text: `The ${name} is at ${fmtDeg(prev.T)} °C here, not ${fmtDeg(T)} °C: it must reach ${fmtDeg(T)} °C first.` };
+  if (T === sub.mp && prev.ph !== 0) return { ok: false, text: `The ${name} has already melted.` };
+  if (T === sub.bp && prev.ph !== 1) return { ok: false, text: `The ${name} must be liquid before it can boil.` };
+  if (!isFinite(q) || q <= 0) return { ok: false, text: "Type the heat for this stage in J." };
+  const trueQ = m * (T === sub.mp ? sub.Lf : sub.Lv);
+  return judge(q, trueQ, { ph: prev.ph + 1, T }, ch, sub, prev);
+}
+function judge(q, trueQ, end, ch, sub, prev) {
+  if (Math.abs(q - trueQ) <= TOL * trueQ) return { ok: true, add: trueQ, end, text: "✓ Matches: " + describe(sub, stateAt(ch, prev.q + trueQ)) + "." };
+  const add = Math.min(q, total(ch) - prev.q), z = stateAt(ch, prev.q + add);
+  return { ok: false, add, end: null, text: `With ${fmt(q)} J the sample ends as ${describe(sub, z)}: ${q < trueQ ? "not enough" : "too much"} heat for this stage.` };
+}
+$("b-test").onclick = () => {
+  if (B.running) return;
+  clearTest();
+  if (!B.stages.length) { B.msg = "Add at least one stage first."; B.msgCls = "res bad"; render(); return; }
+  const l = L(), sub = S(), ch = chainNow();
+  let prev = { T: l.T0, ph: phaseAt(sub, l.T0), q: 0 };
+  const plan = [];
+  for (let i = 0; i < B.stages.length; i++) {
+    const r = checkStage(i, B.stages[i], prev, ch, sub, l.m);
+    plan.push({ i, from: prev.q, to: prev.q + (r.add || 0), r });
+    if (!r.ok) break;
+    prev = { T: r.end.T, ph: r.end.ph, q: prev.q + r.add };
+  }
+  B.running = true; B.msg = ""; render();
+  runPlan(plan, 0, ch, sub, l, prev);
+};
+function runPlan(plan, k, ch, sub, l, last) {
+  if (k >= plan.length) { B.running = false; finish(plan, ch, sub, l, last); render(); return; }
+  const p = plan[k], t0 = performance.now(), ms = p.to > p.from ? 1400 : 300;
+  const tick = now => {
+    const t = Math.min(1, (now - t0) / ms);
+    B.shown = p.from + (p.to - p.from) * t; render();
+    if (t < 1) raf = requestAnimationFrame(tick);
+    else { B.results[p.i] = p.r; render(); if (p.r.ok) runPlan(plan, k + 1, ch, sub, l, last); else { B.running = false; B.msg = "Fix this stage, then test again."; B.msgCls = "res bad"; render(); } }
+  };
+  raf = requestAnimationFrame(tick);
+}
+function finish(plan, ch, sub, l, last) {
+  const allOk = plan.every(p => p.r.ok); if (!allOk) return;
+  const tq = heatToState(ch, l.target.ph, l.target.T), z = stateAt(ch, B.shown);
+  if (Math.abs(B.shown - tq) <= 1e-6 * tq) { B.msg = `✓ Your model works: the sample is ${describe(sub, z)}, the target.`; B.msgCls = "res ok"; B.done = true; }
+  else if (B.shown < tq) { B.msg = `Every stage is correct so far. The sample is ${describe(sub, z)}: add the next stage.`; B.msgCls = "res"; }
+  else { B.msg = `Your model goes past the target: the sample is ${describe(sub, z)}.`; B.msgCls = "res bad"; }
+}
+function stop() { if (raf) cancelAnimationFrame(raf); raf = null; B.running = false; X.running = false; }
+
+// ---------- Exceeding: 0.07 kg of steam at 115 °C let into 0.85 kg of ice at −14 °C, insulated
+const MIX = { ms: 0.07, Ts0: 115, mi: 0.85, Ti: -14 };
+(() => { const W = SUBS.water;
+  MIX.Qsup = MIX.ms * W.c[2] * (MIX.Ts0 - 100);              // 2100 J: the steam cools to 100 °C
+  MIX.Qcond = MIX.ms * W.Lv;                                 // 158,200 J: the steam condenses
+  MIX.Qcool = MIX.ms * W.c[1] * 100;                         // 29,260 J: that water cools to 0 °C
+  MIX.Qwarm = MIX.mi * W.c[0] * (0 - MIX.Ti);                // 24,990 J: the ice warms to 0 °C
+  MIX.Qice0 = MIX.Qwarm + MIX.mi * W.Lf;                     // 308,040 J: all the ice becomes water at 0 °C
+  const A = MIX.Qsup + MIX.Qcond + MIX.Qcool;                // 189,560 J: all the steam can give reaching water at 0 °C
+  if (A < MIX.Qice0) MIX.final = { Tf: 0, iceLeft: MIX.mi - (A - MIX.Qwarm) / W.Lf, H: A };
+  else { const Tf = (A - MIX.Qice0) / (W.c[1] * (MIX.mi + MIX.ms)); MIX.final = { Tf, iceLeft: 0, H: MIX.Qice0 + W.c[1] * MIX.mi * Tf }; }
+})();
+function mixAt(h) {                                          // both sides after heat h has passed from the steam to the ice
+  const W = SUBS.water, q1 = MIX.Qsup, q2 = q1 + MIX.Qcond;
+  let Ts, cond;
+  if (h <= q1) { Ts = MIX.Ts0 - h / (MIX.ms * W.c[2]); cond = 0; }
+  else if (h <= q2) { Ts = 100; cond = (h - q1) / W.Lv; }
+  else { Ts = 100 - (h - q2) / (MIX.ms * W.c[1]); cond = MIX.ms; }
+  let Ti, melted;
+  if (h <= MIX.Qwarm) { Ti = MIX.Ti + h / (MIX.mi * W.c[0]); melted = 0; }
+  else if (h <= MIX.Qice0) { Ti = 0; melted = (h - MIX.Qwarm) / W.Lf; }
+  else { Ti = (h - MIX.Qice0) / (MIX.mi * W.c[1]); melted = MIX.mi; }
+  // Below 0 °C the condensed water would freeze onto the cold ice, so liquid is shown only once the ice reaches 0 °C
+  // (the energy accounting is the same).
+  return { Ts, Ti, steamLeft: MIX.ms - cond, iceLeft: MIX.mi - melted, water: Ti < 0 ? 0 : melted + cond };
+}
+const fmtM = x => (Math.round(x * 100) / 100) + " kg";
+$("x-go").onclick = () => {
+  if (X.mixed) return;
+  if (X.running) { X.running = false; if (raf) cancelAnimationFrame(raf); raf = null; render(); return; }   // Pause
+  // Schematic timing (not real time), so every stage is visible: 1 s for the steam cooling to 100 °C,
+  // 2.5 s for the ice warming to 0 °C, 8 s for the condensing and melting.
+  const K = [[0, 0], [1000, MIX.Qsup], [3500, MIX.Qwarm], [11500, MIX.final.H]];
+  const lerp = (x, i, j) => { for (let k = 1; k < K.length; k++) if (x <= K[k][i]) return K[k - 1][j] + (K[k][j] - K[k - 1][j]) * (x - K[k - 1][i]) / (K[k][i] - K[k - 1][i]); return K[K.length - 1][j]; };
+  const hAt = ms => lerp(ms, 0, 1), msAt = h => lerp(h, 1, 0), T1 = 0, T2 = K[K.length - 1][0];
+  X.running = true; const t0 = performance.now() - msAt(X.h);
+  const tick = now => { const el = now - t0; X.h = hAt(el); render(); if (el < T1 + T2 && X.running) raf = requestAnimationFrame(tick); else if (el >= T1 + T2) { X.running = false; X.mixed = true; render(); } };
+  raf = requestAnimationFrame(tick);
+};
+$("x-reset").onclick = () => { stop(); X.h = 0; X.mixed = false; render(); };
+$("x-check").onclick = () => {
+  const T = parseNum($("x-T").value), m = parseNum($("x-m").value.replace(/kg$/i, ""));
+  if (!isFinite(T) || !isFinite(m) || m < 0) { X.res = "Type a temperature in °C and a mass in kg."; X.ok = false; render(); return; }
+  X.ok = Math.abs(T - MIX.final.Tf) <= 0.5 && Math.abs(m - MIX.final.iceLeft) <= 0.005;
+  X.res = X.ok ? "✓ Matches." : "Doesn't match. Check your model.";
+  if (X.ok) X.matched = true;
+  render();
+};
+["x-T", "x-m"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") $("x-check").click(); }));
+function puff(cx, cy, r, op) { return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#ffffff" stroke="var(--glass)" stroke-width="1" opacity="${op}"/>`; }
+function mixBench() {
+  const z = mixAt(X.h), W = SUBS.water, flowing = X.running && z.steamLeft > 1e-9, open = X.running || X.mixed || X.h > 0;
+  let g = `<text x="8" y="24" font-size="14" font-weight="700" fill="var(--fg)">0.07 kg of steam at 115 °C · 0.85 kg of ice at −14 °C</text>`;
+  // flask of steam on a small heater (keeps it at 115 °C before the valve opens)
+  const fx = 80, fy = 190, r = 46, sOp = 0.1 + 0.8 * z.steamLeft / MIX.ms;
+  g += `<circle cx="${fx}" cy="${fy}" r="${r - 3}" fill="${W.col[2]}" opacity="${sOp.toFixed(2)}"/>`;
+  if (z.steamLeft > 1e-9) for (let i = 0; i < 4; i++) {          // swirling steam inside the flask
+    const a = Date.now() / 700 + i * 1.6; g += puff(fx + 18 * Math.cos(a), fy + 14 * Math.sin(a * 1.3), 6 + 2 * Math.sin(a), (0.5 * sOp).toFixed(2));
+  }
+  g += `<path d="M${fx - 12} ${fy - r + 4} L${fx - 12} ${fy - r - 34} M${fx + 12} ${fy - r + 4} L${fx + 12} ${fy - r - 22}" fill="none" stroke="var(--glass)" stroke-width="3"/>`;
+  g += `<circle cx="${fx}" cy="${fy}" r="${r}" fill="none" stroke="var(--glass)" stroke-width="3"/>`;
+  g += `<text x="${fx}" y="${fy + r + 22}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--fg)">Steam</text>`;
+  // tube and valve
+  const ty = fy - r - 22, ex = 250, ey = 125;
+  g += `<path d="M${fx + 12} ${ty} L${ex} ${ty} L${ex} ${ey}" fill="none" stroke="var(--glass)" stroke-width="6" stroke-linejoin="round"/>`;
+  if (flowing) g += `<path d="M${fx + 12} ${ty} L${ex} ${ty} L${ex} ${ey}" fill="none" stroke="#ffffff" stroke-width="3" stroke-dasharray="6 6" stroke-dashoffset="${-(Date.now() / 25) % 12}"/>`;
+  g += `<rect x="160" y="${ty - 9}" width="18" height="18" rx="3" fill="${open ? "var(--ok)" : "var(--warn)"}"/>`;
+  g += `<text x="169" y="${ty - 14}" text-anchor="middle" font-size="11" fill="var(--muted)">valve ${open ? "open" : "closed"}</text>`;
+  // insulated container with ice and water
+  const bx = 190, bw = 130, btop = 125, bbot = 245;
+  g += `<rect x="${bx - 10}" y="${btop - 10}" width="${bw + 20}" height="${bbot - btop + 20}" rx="8" fill="#e9dcc4" stroke="var(--glass)" stroke-width="2"/>`;
+  g += `<rect x="${bx}" y="${btop}" width="${bw}" height="${bbot - btop}" fill="var(--surface)"/>`;
+  const liqH = Math.min(bbot - btop - 6, 80 * z.water);
+  if (liqH > 0.5) g += `<rect x="${bx + 2}" y="${bbot - 2 - liqH}" width="${bw - 4}" height="${liqH}" fill="${W.col[1]}"/>`;
+  if (z.iceLeft > 1e-6) {                                  // ice shrinks as it melts; it floats once there is enough water
+    const f = z.iceLeft / MIX.mi, cw = 30 * Math.sqrt(f) + 6, floating = liqH > cw;
+    [[-34, 0], [0, 0], [34, 0], [-17, 1], [17, 1]].forEach(([dx, row], i) => {
+      if (i > 2 && (f < 0.5 || floating)) return;
+      const x = bx + bw / 2 + dx, y = floating ? bbot - 2 - liqH - 0.1 * cw : bbot - 4 - cw - row * cw * 0.95;
+      g += `<rect x="${x - cw / 2}" y="${y}" width="${cw}" height="${cw}" rx="4" fill="${W.col[0]}" stroke="#3d8fd6" stroke-width="1.5"/>`;
+    });
+  }
+  if (flowing) for (let i = 0; i < 5; i++) {                 // steam entering and condensing at the outlet
+    const k = ((Date.now() / 600) + i / 5) % 1; g += puff(ex + 10 * Math.sin(i * 2.1 + k * 3), ey + 6 + 55 * k, 7 * (1 - k) + 2, (0.8 * (1 - k)).toFixed(2));
+  }
+  g += `<text x="${bx + bw / 2}" y="${bbot + 32}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--fg)">Ice, insulated container</text>`;
+  // no thermometer readings here (teacher, 2026-10-18): students work out the final temperature themselves
+  return g;
+}
+
+// ---------- levels and render
+function buildLevels() {
+  $("levels").innerHTML = Object.keys(LEVELS).map(k => `<button class="pick" data-lv="${k}" aria-pressed="${k === level}">${LEVELS[k].name}</button>`).join("");
+  document.querySelectorAll("[data-lv]").forEach(b => b.onclick = () => {
+    if (b.dataset.lv === level) return;
+    stop(); level = b.dataset.lv; B = { stages: freshStages(), results: [], shown: 0, running: false, done: false, msg: "", msgCls: "" };
+    buildLevels(); buildStages(); render();
+  });
+}
+function buildTables() {
+  $("t1").innerHTML = ["copper", "water", "mercury"].map(k => { const s = SUBS[k];
+    return `<tr data-sub="${k}"><td>${s.name[0].toUpperCase() + s.name.slice(1)}</td><td class="num">${fmtDeg(s.mp)}</td><td class="num">${fmt(s.Lf)}</td><td class="num">${fmtDeg(s.bp)}</td><td class="num">${fmt(s.Lv)}</td></tr>`; }).join("");
+  $("t2").innerHTML = ["copper", "water", "mercury"].map(k => { const s = SUBS[k];
+    return `<tr data-sub="${k}"><td>${s.name[0].toUpperCase() + s.name.slice(1)}</td>${s.c.map(v => `<td class="num">${v == null ? "—" : v}</td>`).join("")}</tr>`; }).join("");
+}
+function render() {
+  const l = L(), build = l.mode === "build";
+  $("task").textContent = l.task;
+  $("p-build").hidden = !build; $("x-setup").hidden = build;
+  document.querySelectorAll("tr[data-sub]").forEach(tr => tr.className = tr.dataset.sub === l.sub ? "hl" : "");
+  // assumptions (no heat lost to the room, constant pressure of 1 atm) are in the plan, not on screen (teacher, 2026-10-18)
+  if (build) {
+    B.stages.forEach((s, i) => {
+      const r = B.results[i], el = $(`sg-${i}`), res = $(`sg-res-${i}`);
+      el.className = "stage" + (r ? (r.ok ? " ok" : " bad") : "");
+      res.textContent = r ? r.text : ""; res.className = "res " + (r ? (r.ok ? "ok" : "bad") : "");
+      el.querySelectorAll("input,select,button").forEach(x => x.disabled = B.running || x.dataset.lock === "1");
+    });
+    $("b-add").disabled = $("b-test").disabled = B.running;
+    $("b-add").hidden = !!l.fixed;
+    $("b-note").innerHTML = l.note || DEFAULT_NOTE;
+    $("b-msg").textContent = B.msg; $("b-msg").className = B.msgCls || "res";
+  } else {
+    $("x-res").textContent = X.res; $("x-res").className = "res " + (X.ok ? "ok" : X.res ? "bad" : "");
+    $("x-T").disabled = $("x-m").disabled = $("x-check").disabled = X.matched;
+    const go = $("x-go"); go.disabled = X.mixed; go.textContent = X.running ? "❚❚ Pause" : X.h > 0 && !X.mixed ? "▶ Continue" : "▶ Start";
+    $("x-msg").textContent = X.mixed ? "Mixing finished." + (X.matched ? ` ${fmtM(MIX.final.iceLeft)} of ice and ${fmtM(MIX.final.iceLeft > 0 ? MIX.mi - MIX.final.iceLeft + MIX.ms : MIX.mi + MIX.ms)} of water at ${fmtT(MIX.final.Tf)} °C.` : "")
+                           : X.running ? "Mixing…" : "";
+    $("x-msg").className = "res";
+  }
+  drawBench();
+}
+
+// ---------- bench
+function meter(x, y, w, label, value, unit) {
+  return `<text x="${x + w / 2}" y="${y - 5}" text-anchor="middle" font-size="11" fill="var(--muted)">${label}</text>` +
+    `<rect x="${x}" y="${y}" width="${w}" height="32" rx="6" fill="var(--surface)" stroke="var(--fg)" stroke-width="2"/>` +
+    `<text x="${x + w - 8}" y="${y + 22}" text-anchor="end" font-size="15" font-weight="700" fill="var(--fg)" font-family="IBM Plex Mono, monospace">${value} ${unit}</text>`;
+}
+function drawBench() {
+  if (L().mode === "mix") { $("bench").innerHTML = mixBench(); return; }
+  const l = L(), sub = S();
+  const ch = chainNow(), q = B.shown, z = stateAt(ch, q), [fs, fl, fg] = z.comp;
+  const on = B.running, m = l.m;
+  const x0 = 70, w = 130, top = 60, bottom = 240, liqH = 70 * fl, pistonY = 150 - 80 * Math.sqrt(fg);
+  let g = "";
+  g += `<text x="8" y="24" font-size="14" font-weight="700" fill="var(--fg)">Sample: ${m} kg of ${sub.name}, starts at ${fmtDeg(l.T0)} °C</text>`;
+  if (fg > 0) g += `<rect x="${x0 + 3}" y="${pistonY + 10}" width="${w - 6}" height="${bottom - 3 - pistonY - 10}" fill="${sub.col[2]}" opacity="${(0.3 + 0.6 * fg).toFixed(2)}"/>`;
+  if (liqH > 0.5) g += `<rect x="${x0 + 3}" y="${bottom - 3 - liqH}" width="${w - 6}" height="${liqH}" fill="${sub.col[1]}"/>`;
+  if (fs > 1e-6) {                                     // the solid: a block that shrinks as it melts (it sinks: no floating except ice)
+    const bw = 90 * Math.sqrt(fs), bh = 46 * Math.sqrt(fs), floats = sub.name === "water" && liqH > bh;
+    const by = floats ? bottom - 3 - liqH - 0.1 * bh : bottom - 3 - bh;
+    g += `<rect x="${x0 + w / 2 - bw / 2}" y="${by}" width="${bw}" height="${bh}" rx="4" fill="${sub.col[0]}" stroke="var(--fg)" stroke-opacity="0.35" stroke-width="1.5"/>`;
+  }
+  if (on && fl > 0.01 && Math.abs(z.T - sub.bp) < 1e-6)
+    for (let i = 0; i < 6; i++) g += `<circle cx="${x0 + 14 + ((i * 41 + Date.now() / 9) % (w - 28))}" cy="${bottom - 6 - ((i * 23 + Date.now() / 14) % Math.max(6, liqH - 6))}" r="3" fill="none" stroke="var(--fg)" opacity="0.5"/>`;
+  g += `<rect x="${x0 + 3}" y="${pistonY}" width="${w - 6}" height="10" rx="2" fill="var(--glass)"/>`;
+  g += `<rect x="${x0 + w / 2 - 4}" y="${top - 12}" width="8" height="${pistonY - top + 12}" fill="var(--glass)"/>`;
+  g += `<text x="${x0 - 6}" y="${pistonY + 9}" text-anchor="end" font-size="11" fill="var(--muted)">piston</text>`;
+  g += `<path d="M${x0} ${top} L${x0} ${bottom - 8} Q${x0} ${bottom} ${x0 + 8} ${bottom} L${x0 + w - 8} ${bottom} Q${x0 + w} ${bottom} ${x0 + w} ${bottom - 8} L${x0 + w} ${top}" fill="none" stroke="var(--glass)" stroke-width="3"/>`;
+  g += `<line x1="${x0 + w}" y1="190" x2="${x0 + w + 40}" y2="190" stroke="var(--fg)" stroke-width="2"/>`;
+  g += `<rect x="${x0 - 10}" y="${bottom + 8}" width="${w + 20}" height="14" rx="5" fill="${on ? "var(--heat)" : "var(--line)"}"/>`;
+  g += `<text x="${x0 + w / 2}" y="${bottom + 38}" text-anchor="middle" font-size="12" fill="var(--muted)">Heater · ${on ? "on" : "off"}</text>`;
+  g += meter(x0 + w + 44, 100, 210, "joulemeter: heat supplied", fmt(q), "J");
+  g += meter(x0 + w + 44, 174, 140, "thermometer", fmtT(z.T), "°C");
+  g += `<text x="${x0 + w + 44}" y="232" font-size="12" fill="var(--muted)">In the cylinder:</text>`;
+  g += `<text x="${x0 + w + 44}" y="250" font-size="13" font-weight="700" fill="var(--fg)">${PNAME[sub.name].filter((_, i) => z.comp[i] > 0).join(" + ")}</text>`;
+  $("bench").innerHTML = g;
+}
+
+buildTables(); B.stages = freshStages(); buildLevels(); buildStages(); render();
+</script>
+</body>
+</html>
