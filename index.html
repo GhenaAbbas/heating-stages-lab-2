@@ -150,12 +150,12 @@ const PHASES = ["solid", "liquid", "gas"];
 const PNAME = { copper: ["solid copper", "liquid copper", "copper vapour"], water: ["ice", "water", "steam"], mercury: ["solid mercury", "liquid mercury", "mercury vapour"] };
 const LEVELS = {
   E: { name: "Emerging",   mode: "build", sub: "copper",  m: 0.35, T0: 24, fixed: true,
-       note: "The stages and their formulas are set up for you. Type the heat for each stage in J, then test your model.",
+       note: "Type the heat for each stage in J, then press <b>Test my model</b>.",
        preset: () => [{ type: "heat", a: "24", b: "1083", q: "", lockType: true, lockTemps: true, hint: "Q = mcΔT" },
                       { type: "phase", T: "1083", q: "", lockType: true, lockTemps: true, hint: "Q = mL<sub>f</sub>" }],   Tcap: 1300, target: { ph: 1, T: 1083 },
        task: "Construct a heating model to melt 0.35 kg of copper completely, starting at 24 °C. Draw the heating curve and highlight the melting point." },
   D: { name: "Developing", mode: "build", sub: "water",   m: 0.38, T0: -18, fixed: true,
-       note: "The four stage types are set up for you. For each stage, type its temperatures and the heat in J, then test your model.",
+       note: "Type the temperatures and the heat for each stage in J, then press <b>Test my model</b>.",
        preset: () => [{ type: "heat", lockType: true }, { type: "phase", lockType: true }, { type: "heat", lockType: true }, { type: "phase", lockType: true }]
                       .map(s => Object.assign({ a: "", b: "", T: "", q: "" }, s)),  Tcap: 150,  target: { ph: 2, T: 100 },
        task: "Construct a heating model to turn 0.38 kg of ice at −18 °C completely into steam. Draw the heating curve and highlight the melting and boiling points." },
